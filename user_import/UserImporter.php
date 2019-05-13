@@ -14,7 +14,7 @@ class UserImporter {
    *
    * @var \UserImporter
    */
-  private $userImporter;
+  private static $userImporter;
 
   /**
    * Path to the CSV file.
@@ -64,11 +64,11 @@ class UserImporter {
    *
    * @return \UserImporter
    */
-  public function getInstance() {
-    if (!$this->userImporter) {
-      $this->userImporter = new self;
+  public static function getInstance() {
+    if (!self::$userImporter) {
+      self::$userImporter = new self;
     }
-    return $this->userImporter;
+    return self::$userImporter;
   }
 
   /**
@@ -82,9 +82,9 @@ class UserImporter {
 
     for ($i = 0; $i < $argc; $i++) {
       $arg = $argv[$i];
+      echo $arg . "\n";
 
       switch ($arg) {
-
         case '--file':
           if ($i + 1 < $argc) {
             $i++;
@@ -153,7 +153,7 @@ class UserImporter {
    */
   public function run() {
     if ($this->showHelp) {
-      $this->printHelpText();
+//      $this->printHelpText();
       return;
     }
 

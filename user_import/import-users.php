@@ -16,7 +16,8 @@ try {
 }
 catch (Exception $e) {
   // Show error.
-  exit($e->getMessage());
+  echo $e->getMessage() . "\n";
+  exit(1);
 }
 
 // Everything worked.
