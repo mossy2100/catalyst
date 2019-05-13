@@ -2,9 +2,9 @@
 
 /**
  * @file
- * Singleton class to import users from the command line.
+ * Singleton class to import users into a database from a CSV file.
  *
- * @author Shaun Moss <shaun.moss@gaiaresources.com.au>
+ * @author Shaun Moss <shaun@astromultimedia.com>
  */
 
 class UserImporter {
