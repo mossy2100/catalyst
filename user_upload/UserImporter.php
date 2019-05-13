@@ -259,6 +259,32 @@ class UserImporter {
   }
 
   /**
+   * Insert user into the database.
+   *
+   * @param string $email
+   * @param string $name
+   * @param string $surname
+   */
+  public function insertUser($email, $name, $surname) {
+    echo "Inserting user record.\n";
+
+    // Escape strings before using in query.
+    $email = $this->db->escape_string($email);
+    $name = $this->db->escape_string($name);
+    $surname = $this->db->escape_string($surname);
+
+    // Do the insert.
+    $result = $this->db->query("
+      INSERT `users` (email, name, surname)
+      VALUES ('$email', '$name', '$surname')
+    ");
+
+    if ($result === FALSE) {
+      echo "Error inserting record into database.\n";
+    }
+  }
+
+  /**
    * Import the users and, if not a dry run, insert them into the database.
    *
    * @throws \Exception
@@ -282,7 +308,7 @@ class UserImporter {
 
       // Note we can't use fgetcsv() here because the CSV doesn't have delimiters.
       $line = fgets($fh);
-      if ($line === FALSE) {
+      if (empty($line)) {
         // Silently skip blank lines.
         continue;
       }
@@ -295,7 +321,7 @@ class UserImporter {
         continue;
       }
 
-      // Massage the data.
+      // Clean the data.
       $email = strtolower(trim($rec[2]));
       $name = ucfirst(strtolower(trim($rec[0])));
       $surname = ucfirst(strtolower(trim($rec[1])));
@@ -320,23 +346,7 @@ class UserImporter {
 
       // If this isn't a dry run, insert the user into the database.
       if (!$this->dryRun) {
-        echo "Inserting record.\n";
-
-        // Escape strings before using in query.
-        $email = $this->db->escape_string($email);
-        $name = $this->db->escape_string($name);
-        $surname = $this->db->escape_string($surname);
-
-        // Do the insert.
-        $result = $this->db->query("
-          INSERT `users` (email, name, surname)
-          VALUES ('$email', '$name', '$surname')
-        ");
-
-        if ($result === FALSE) {
-          echo "Error inserting record into database.\n";
-          continue;
-        }
+        $this->insertUser($email, $name, $surname);
       }
     }
   }
@@ -361,13 +371,10 @@ class UserImporter {
       $this->createUsersTable();
     }
 
-    // If we're only creating the table, we're done.
-    if ($this->createTableOnly) {
-      return;
+    if (!$this->createTableOnly) {
+      // Import the users.
+      $this->importUsers();
     }
-
-    // Import the users.
-    $this->importUsers();
 
     // Close the database.
     if ($db_required) {
