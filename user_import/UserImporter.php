@@ -208,12 +208,9 @@ class UserImporter {
   /**
    * Connect to the database.
    *
-   * @return \mysqli
-   *   The MySQLi database object.
-   *
    * @throws \Exception
    */
-  protected function connectDatabase(): mysqli {
+  public function connectDatabase() {
     // Check we have all the database parameters.
     if (empty($this->dbUser)) {
       throw new Exception("Database user not specified.");
@@ -235,27 +232,81 @@ class UserImporter {
   }
 
   /**
-   * Create or recreate the users table.
+   * Create the users table.
    *
    * @throws \Exception
    */
-  protected function createUsersTable() {
+  public function createUsersTable() {
     // Drop table if it already exists.
     echo "Creating users table.\n";
-    $result = $this->db->query("drop table if exists users");
+    $result = $this->db->query("DROP TABLE IF EXISTS `users`");
     if (!$result) {
       throw new Exception("Error dropping users table: " . $this->db->error);
     }
 
-    // Create or recreate table.
+    // Create table.
     $result = $this->db->query("
-      create table users
-        email varchar(100) not null unique primary,
-        first_name varchar(100) not null,
-        last_name varchar(100) not null
+      CREATE TABLE `users` (
+        `email` varchar(100) NOT NULL DEFAULT '',
+        `name` varchar(100) NOT NULL DEFAULT '',
+        `surname` varchar(100) NOT NULL DEFAULT '',
+        PRIMARY KEY (`email`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
     if (!$result) {
       throw new Exception("Error creating users table: " . $this->db->error);
+    }
+  }
+
+  /**
+   * Import the users and, if not a dry run, insert them into the database.
+   *
+   * @throws \Exception
+   */
+  public function importUsers() {
+    // Read the users.
+    $fh = fopen($this->path, 'r');
+    if ($fh === FALSE) {
+      throw new Exception("Error opening the data file.");
+    }
+
+    // Read the first line, which has the headings, and ignore it.
+    $headings = fgetcsv($fh, 0, ',', '');
+    if ($headings === FALSE) {
+      throw new Exception("Error reading from the data file.");
+    }
+
+    // Read the user records.
+    while (!feof($fh)) {
+      $rec = fgetcsv($fh, 0, ',', '');
+      if ($rec === FALSE) {
+        throw new Exception("Error reading from the data file.");
+      }
+      var_dump($rec);
+      if (count($rec) !== 3) {
+        throw new Exception("Invalid user record (number of fields = " . count($rec) . ").\n");
+      }
+
+      // Massage the data.
+      $email = $this->db->escape_string(strtolower(trim($rec[2])));
+      $name = $this->db->escape_string(ucfirst(trim($rec[0])));
+      $surname = $this->db->escape_string(ucfirst(trim($rec[1])));
+
+      // Check we at least have an email address, since this is the primary key.
+      if (empty($email)) {
+        throw new Exception("Email address is required.\n");
+      }
+
+      // Display the user record.
+      echo "$name $surname <$email>\n";
+
+      // If this isn't a dry run, insert the user into the database.
+      if (!$this->dryRun) {
+        $this->db->query("
+          INSERT `users` (email, name, surname)
+          VALUES ('$email, '$name', '$surname')
+        ");
+      }
     }
   }
 
@@ -272,13 +323,25 @@ class UserImporter {
     }
 
     // Do we want to insert users into the database?
-    $insert_users = $this->createTableOnly || !$this->dryRun;
+    $db_required = $this->createTableOnly || !$this->dryRun;
 
-    if ($insert_users) {
-      $this->db = $this->connectDatabase();
+    if ($db_required) {
+      $this->connectDatabase();
       $this->createUsersTable();
     }
 
+    // If we're only creating the table, we're done.
+    if ($this->createTableOnly) {
+      return;
+    }
+
+    // Import the users.
+    $this->importUsers();
+
+    // Close the database.
+    if ($db_required) {
+      $this->db->close();
+    }
   }
 
 }
