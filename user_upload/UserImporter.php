@@ -189,15 +189,15 @@ class UserImporter {
     echo "\n";
 
     echo "-u [username]\n";
-    echo "The database user name. Required unless --help, --create_table, or --dry_run is specified.\n";
+    echo "The database user name. Required unless --help or --dry_run is specified.\n";
     echo "\n";
 
     echo "-p [password]\n";
-    echo "The database password. Required unless --help, --create_table, or --dry_run is specified.\n";
+    echo "The database password. Required unless --help or --dry_run is specified.\n";
     echo "\n";
 
     echo "-h [host]\n";
-    echo "The database host. Required unless --help, --create_table, or --dry_run is specified.\n";
+    echo "The database host. Required unless --help or --dry_run is specified.\n";
     echo "\n";
 
     echo "--help\n";
