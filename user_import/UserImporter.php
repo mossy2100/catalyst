@@ -271,41 +271,72 @@ class UserImporter {
     }
 
     // Read the first line, which has the headings, and ignore it.
-    $headings = fgetcsv($fh, 0, ',', '');
+    $headings = fgets($fh);
     if ($headings === FALSE) {
       throw new Exception("Error reading from the data file.");
     }
 
     // Read the user records.
     while (!feof($fh)) {
-      $rec = fgetcsv($fh, 0, ',', '');
-      if ($rec === FALSE) {
-        throw new Exception("Error reading from the data file.");
+      echo "\n";
+
+      // Note we can't use fgetcsv() here because the CSV doesn't have delimiters.
+      $line = fgets($fh);
+      if ($line === FALSE) {
+        // Silently skip blank lines.
+        continue;
       }
-      var_dump($rec);
+
+      // Split the line into fields.
+      $rec = explode(',', trim($line));
+      echo("Record found: " . json_encode($rec) . "\n");
       if (count($rec) !== 3) {
-        throw new Exception("Invalid user record (number of fields = " . count($rec) . ").\n");
+        echo "Invalid user record, skip this one.\n";
+        continue;
       }
 
       // Massage the data.
-      $email = $this->db->escape_string(strtolower(trim($rec[2])));
-      $name = $this->db->escape_string(ucfirst(trim($rec[0])));
-      $surname = $this->db->escape_string(ucfirst(trim($rec[1])));
+      $email = strtolower(trim($rec[2]));
+      $name = ucfirst(strtolower(trim($rec[0])));
+      $surname = ucfirst(strtolower(trim($rec[1])));
 
       // Check we at least have an email address, since this is the primary key.
       if (empty($email)) {
-        throw new Exception("Email address is required.\n");
+        echo "Email address is required, skip this record.\n";
+        continue;
       }
 
-      // Display the user record.
+      // Check the email address is valid.
+      $check_email = filter_var($email, FILTER_VALIDATE_EMAIL);
+      if ($check_email === FALSE) {
+        echo "Invalid email address, skip this one.\n";
+        continue;
+      }
+
+      echo "Email address is valid.\n";
+
+      // Display the user record in a nice format.
       echo "$name $surname <$email>\n";
 
       // If this isn't a dry run, insert the user into the database.
       if (!$this->dryRun) {
-        $this->db->query("
+        echo "Inserting record.\n";
+
+        // Escape strings before using in query.
+        $email = $this->db->escape_string($email);
+        $name = $this->db->escape_string($name);
+        $surname = $this->db->escape_string($surname);
+
+        // Do the insert.
+        $result = $this->db->query("
           INSERT `users` (email, name, surname)
-          VALUES ('$email, '$name', '$surname')
+          VALUES ('$email', '$name', '$surname')
         ");
+
+        if ($result === FALSE) {
+          echo "Error inserting record into database.\n";
+          continue;
+        }
       }
     }
   }
@@ -322,7 +353,7 @@ class UserImporter {
       return;
     }
 
-    // Do we want to insert users into the database?
+    // Do we need the database?
     $db_required = $this->createTableOnly || !$this->dryRun;
 
     if ($db_required) {
